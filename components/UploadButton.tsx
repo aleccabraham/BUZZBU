@@ -38,18 +38,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
       try {
         const mimeType = files[i].type || "application/octet-stream"
 
-        // Verify the token actually has drive scope before attempting upload
-        const tokenInfo = await fetch(
-          `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${session.accessToken}`
-        ).then((r) => r.json())
-
-        if (!tokenInfo.scope?.includes("drive")) {
-          throw new Error(
-            `Token scope is: "${tokenInfo.scope ?? "unknown"}". Please sign out and sign back in to grant Drive access.`
-          )
-        }
-
-        // Step 1: initiate a resumable upload session directly with Google Drive
+        // Step 1: initiate resumable upload session
         const initRes = await fetch(
           "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id%2Cname%2CmimeType%2CthumbnailLink%2CcreatedTime%2Csize",
           {
@@ -66,25 +55,45 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 
         if (!initRes.ok) {
           const err = await initRes.text()
-          throw new Error(`Initiation failed (${initRes.status}): ${err.slice(0, 150)}`)
+          throw new Error(`Initiation failed (${initRes.status}): ${err.slice(0, 200)}`)
         }
 
         const uploadUrl = initRes.headers.get("location")
         if (!uploadUrl) throw new Error("No upload URL returned by Google")
 
-        // Step 2: upload the file bytes directly to Google Drive
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": mimeType },
-          body: files[i],
-        })
+        // Step 2: upload in 5MB chunks (handles large phone photos reliably)
+        const CHUNK = 5 * 1024 * 1024
+        const total = files[i].size
+        let offset = 0
+        let fileData: Record<string, string> | null = null
 
-        if (!uploadRes.ok) {
-          const body = await uploadRes.text()
-          throw new Error(`Upload failed (${uploadRes.status}): ${body.slice(0, 150)}`)
+        while (offset < total) {
+          const end = Math.min(offset + CHUNK, total)
+          const chunk = files[i].slice(offset, end)
+
+          const chunkRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": mimeType,
+              "Content-Range": `bytes ${offset}-${end - 1}/${total}`,
+            },
+            body: chunk,
+          })
+
+          if (chunkRes.status === 200 || chunkRes.status === 201) {
+            fileData = await chunkRes.json()
+            break
+          } else if (chunkRes.status === 308) {
+            // Resume Incomplete — move to next chunk
+            const range = chunkRes.headers.get("range")
+            offset = range ? parseInt(range.split("-")[1]) + 1 : end
+          } else {
+            const body = await chunkRes.text()
+            throw new Error(`Chunk upload failed (${chunkRes.status}): ${body.slice(0, 200)}`)
+          }
         }
 
-        const fileData = await uploadRes.json()
+        if (!fileData) throw new Error("Upload completed but no file data returned")
         uploaded.push({
           id: fileData.id,
           name: fileData.name,
