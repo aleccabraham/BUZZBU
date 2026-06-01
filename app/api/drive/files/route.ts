@@ -74,9 +74,10 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ file: uploaded.data })
-  } catch (err) {
-    console.error("files POST error", err)
-    return NextResponse.json({ error: "Failed to upload file" }, { status: 500 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : JSON.stringify(err)
+    console.error("files POST error", msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
