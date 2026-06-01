@@ -11,6 +11,7 @@ type Props = {
 type UploadItem = {
   name: string
   status: "pending" | "uploading" | "done" | "error"
+  error?: string
 }
 
 export function UploadButton({ folderId, onUploadComplete }: Props) {
@@ -33,28 +34,37 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 
       try {
         // Step 1: get a resumable upload URL from our server
-        // The file is then uploaded directly to Google Drive — bypassing Vercel's body size limit
         const urlRes = await fetch("/api/drive/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fileName: files[i].name,
             mimeType: files[i].type || "application/octet-stream",
+            fileSize: files[i].size,
             folderId,
           }),
         })
 
-        if (!urlRes.ok) throw new Error("Failed to get upload URL")
+        if (!urlRes.ok) {
+          const e = await urlRes.json().catch(() => ({}))
+          throw new Error(`URL step failed: ${e.error ?? urlRes.status}`)
+        }
         const { uploadUrl } = await urlRes.json()
 
-        // Step 2: upload file bytes directly to Google Drive
+        // Step 2: upload file bytes directly to Google Drive (no Vercel size limit)
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { "Content-Type": files[i].type || "application/octet-stream" },
+          headers: {
+            "Content-Type": files[i].type || "application/octet-stream",
+            "Content-Length": String(files[i].size),
+          },
           body: files[i],
         })
 
-        if (!uploadRes.ok) throw new Error("Upload to Drive failed")
+        if (!uploadRes.ok) {
+          const body = await uploadRes.text()
+          throw new Error(`Drive upload failed (${uploadRes.status}): ${body.slice(0, 200)}`)
+        }
 
         const fileData = await uploadRes.json()
 
@@ -69,8 +79,9 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 
         setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "done" } : item))
       } catch (err) {
-        console.error("upload error", err)
-        setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "error" } : item))
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error("upload error", msg)
+        setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "error", error: msg } : item))
       }
     }
 
@@ -117,7 +128,10 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
             {queue.map((item, i) => (
               <div key={i} className="flex items-center gap-2">
                 <StatusIcon status={item.status} />
-                <span className="text-xs text-slate-400 truncate flex-1">{item.name}</span>
+                <span className="text-xs text-slate-400 truncate flex-1">
+                  {item.name}
+                  {item.error && <span className="block text-red-400 text-[10px]">{item.error}</span>}
+                </span>
               </div>
             ))}
           </div>

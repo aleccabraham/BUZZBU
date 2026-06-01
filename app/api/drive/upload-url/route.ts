@@ -14,17 +14,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { fileName, mimeType, folderId } = await request.json()
+  const { fileName, mimeType, fileSize, folderId } = await request.json()
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${session.accessToken}`,
+    "Content-Type": "application/json",
+    "X-Upload-Content-Type": mimeType || "application/octet-stream",
+  }
+  if (fileSize) headers["X-Upload-Content-Length"] = String(fileSize)
 
   const initRes = await fetch(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,thumbnailLink,createdTime,size",
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-        "Content-Type": "application/json",
-        "X-Upload-Content-Type": mimeType || "application/octet-stream",
-      },
+      headers,
       body: JSON.stringify({
         name: fileName,
         parents: [folderId],
