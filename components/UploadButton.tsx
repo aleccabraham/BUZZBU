@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { useSession } from "next-auth/react"
 import type { DriveFile } from "@/app/albums/[albumId]/page"
 
 type Props = {
@@ -15,6 +16,7 @@ type UploadItem = {
 }
 
 export function UploadButton({ folderId, onUploadComplete }: Props) {
+  const { data: session } = useSession()
   const inputRef = useRef<HTMLInputElement>(null)
   const [queue, setQueue] = useState<UploadItem[]>([])
   const [showToast, setShowToast] = useState(false)
@@ -22,6 +24,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
   async function handleFiles(fileList: FileList) {
     const files = Array.from(fileList)
     if (!files.length) return
+    if (!session?.accessToken) { alert("Session expired — please sign in again."); return }
 
     const items: UploadItem[] = files.map((f) => ({ name: f.name, status: "pending" }))
     setQueue(items)
@@ -33,40 +36,44 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
       setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "uploading" } : item))
 
       try {
-        // Step 1: server creates a Drive resumable upload session, returns the URL
-        const urlRes = await fetch("/api/drive/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: files[i].name,
-            mimeType: files[i].type || "application/octet-stream",
-            fileSize: files[i].size,
-            folderId,
-          }),
-        })
+        const mimeType = files[i].type || "application/octet-stream"
 
-        if (!urlRes.ok) {
-          const e = await urlRes.json().catch(() => ({}))
-          throw new Error(`Could not start upload: ${e.error ?? urlRes.status}`)
+        // Step 1: initiate a resumable upload session directly with Google Drive
+        const initRes = await fetch(
+          "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id%2Cname%2CmimeType%2CthumbnailLink%2CcreatedTime%2Csize",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.accessToken}`,
+              "Content-Type": "application/json",
+              "X-Upload-Content-Type": mimeType,
+              "X-Upload-Content-Length": String(files[i].size),
+            },
+            body: JSON.stringify({ name: files[i].name, parents: [folderId] }),
+          }
+        )
+
+        if (!initRes.ok) {
+          const err = await initRes.text()
+          throw new Error(`Initiation failed (${initRes.status}): ${err.slice(0, 150)}`)
         }
 
-        const { uploadUrl } = await urlRes.json()
+        const uploadUrl = initRes.headers.get("location")
+        if (!uploadUrl) throw new Error("No upload URL returned by Google")
 
-        // Step 2: upload the file bytes directly from the browser to Google Drive
-        // — this completely bypasses Vercel's payload size limit
+        // Step 2: upload the file bytes directly to Google Drive
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { "Content-Type": files[i].type || "application/octet-stream" },
+          headers: { "Content-Type": mimeType },
           body: files[i],
         })
 
         if (!uploadRes.ok) {
           const body = await uploadRes.text()
-          throw new Error(`Drive error (${uploadRes.status}): ${body.slice(0, 150)}`)
+          throw new Error(`Upload failed (${uploadRes.status}): ${body.slice(0, 150)}`)
         }
 
         const fileData = await uploadRes.json()
-
         uploaded.push({
           id: fileData.id,
           name: fileData.name,
@@ -85,8 +92,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
     }
 
     if (uploaded.length > 0) onUploadComplete(uploaded)
-
-    setTimeout(() => { setShowToast(false); setQueue([]) }, 3000)
+    setTimeout(() => { setShowToast(false); setQueue([]) }, 4000)
   }
 
   return (
@@ -124,9 +130,9 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
             {queue.map((item, i) => (
               <div key={i} className="flex items-center gap-2">
                 <StatusIcon status={item.status} />
-                <span className="text-xs text-slate-400 truncate flex-1">
-                  {item.name}
-                  {item.error && <span className="block text-red-400 text-[10px] whitespace-normal">{item.error}</span>}
+                <span className="text-xs text-slate-400 flex-1">
+                  <span className="truncate block">{item.name}</span>
+                  {item.error && <span className="text-red-400 text-[10px] whitespace-normal block mt-0.5">{item.error}</span>}
                 </span>
               </div>
             ))}
