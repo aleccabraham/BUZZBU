@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useRef, useState } from "react"
 import type { DriveFile } from "@/app/albums/[albumId]/page"
@@ -91,7 +91,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 
       <button
         onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+        className="flex items-center gap-1.5 bg-[#ff5c2e] hover:bg-[#ff7347] text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
       >
         <UploadIcon className="w-4 h-4" />
         <span>Upload</span>
@@ -126,7 +126,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
           {/* Overall progress bar */}
           <div className="mt-3 h-1 bg-[#2a2a2a] rounded-full overflow-hidden">
             <div
-              className="h-full bg-sky-500 transition-all duration-300"
+              className="h-full bg-[#ff5c2e] transition-all duration-300"
               style={{
                 width: `${
                   (queue.filter((i) => i.status === "done" || i.status === "error").length /
@@ -145,7 +145,7 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 function StatusIcon({ status }: { status: UploadItem["status"] }) {
   if (status === "uploading") {
     return (
-      <div className="w-3.5 h-3.5 shrink-0 border border-sky-400/40 border-t-sky-400 rounded-full animate-spin" />
+      <div className="w-3.5 h-3.5 shrink-0 border border-[#ff5c2e]/30 border-t-[#ff5c2e] rounded-full animate-spin" />
     )
   }
   if (status === "done") {
@@ -180,3 +180,4 @@ function XIcon({ className = "" }: { className?: string }) {
     </svg>
   )
 }
+

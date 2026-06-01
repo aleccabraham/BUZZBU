@@ -32,6 +32,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Windows system files
+desktop.ini
+Thumbs.db
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

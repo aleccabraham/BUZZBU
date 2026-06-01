@@ -5,6 +5,7 @@ type Album = {
   name: string
   createdTime?: string
   coverThumbnail?: string | null
+  coverFileId?: string | null
   itemCount: number
 }
 
@@ -18,17 +19,6 @@ export function AlbumCard({ album, onClick }: Props) {
     sessionStorage.setItem(`album_name_${album.id}`, album.name)
     onClick()
   }
-  const formattedDate = album.createdTime
-    ? new Date(album.createdTime).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null
-
-  const coverSrc = album.coverThumbnail
-    ? album.coverThumbnail.replace(/=s\d+$/, "=s400")
-    : null
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" || e.key === " ") {
@@ -37,39 +27,64 @@ export function AlbumCard({ album, onClick }: Props) {
     }
   }
 
+  const formattedDate = album.createdTime
+    ? new Date(album.createdTime).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null
+
+  // Drive thumbnail URL first, proxy fallback if it fails or is missing
+  const coverSrc = album.coverThumbnail
+    ? album.coverThumbnail.replace(/=s\d+$/, "=s400")
+    : album.coverFileId
+    ? `/api/drive/media/${album.coverFileId}`
+    : null
+
+  const proxyFallback = album.coverFileId
+    ? `/api/drive/media/${album.coverFileId}`
+    : null
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className="group cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-[#0a0a0a] rounded-xl"
+      className="group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#ff5c2e] focus:ring-offset-2 focus:ring-offset-[#0e0d0c] rounded-xl"
     >
       {/* Cover image */}
-      <div className="aspect-square rounded-xl overflow-hidden bg-[#111] border border-[#1f1f1f] group-hover:border-[#333] transition-colors relative">
+      <div className="aspect-square rounded-xl overflow-hidden bg-[#161412] border border-[#2e2b28] group-hover:border-[#3a3530] transition-colors relative">
         {coverSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={coverSrc}
             alt={album.name}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              const img = e.currentTarget
+              if (proxyFallback && img.src !== proxyFallback) {
+                img.src = proxyFallback
+              } else {
+                img.style.display = "none"
+              }
+            }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#333]">
+          <div className="w-full h-full flex items-center justify-center text-[#3a3530]">
             <FolderIcon className="w-12 h-12" />
           </div>
         )}
-
-        {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
       </div>
 
       {/* Info */}
       <div className="mt-2.5 px-0.5">
-        <p className="font-medium text-slate-100 text-sm truncate leading-snug">
+        <p className="font-medium text-[#f0ebe5] text-sm truncate leading-snug">
           {album.name}
         </p>
-        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[#7a736b]">
           <span>{album.itemCount} item{album.itemCount !== 1 ? "s" : ""}</span>
           {formattedDate && (
             <>

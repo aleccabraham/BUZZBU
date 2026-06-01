@@ -11,7 +11,7 @@ type Props = {
 
 export function PhotoGrid({ files, deletingId, onOpenFile, onDeleteFile }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 no-select">
       {files.map((file) => (
         <FileCell
           key={file.id}
@@ -40,8 +40,11 @@ function FileCell({
   const isVideo = file.mimeType.startsWith("video/")
   const isMedia = isImage || isVideo
 
+  // Use Drive thumbnail if available, otherwise fall back to our media proxy
   const thumbnailSrc = file.thumbnailLink
     ? file.thumbnailLink.replace(/=s\d+$/, "=s400")
+    : isMedia
+    ? `/api/drive/media/${file.id}`
     : null
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -68,6 +71,11 @@ function FileCell({
           src={thumbnailSrc}
           alt={file.name}
           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+          onError={(e) => {
+            const img = e.currentTarget
+            const proxyUrl = `/api/drive/media/${file.id}`
+            if (img.src !== proxyUrl) img.src = proxyUrl
+          }}
         />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-1 p-2">

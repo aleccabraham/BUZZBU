@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useEffect, useCallback, useState } from "react"
+import { useEffect, useCallback, useState, useRef } from "react"
 import type { DriveFile } from "@/app/albums/[albumId]/page"
 
 type Props = {
@@ -13,6 +13,8 @@ type Props = {
 export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
   const [index, setIndex] = useState(initialIndex)
   const [loaded, setLoaded] = useState(false)
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
 
   const file = files[index]
   const isVideo = file?.mimeType.startsWith("video/")
@@ -27,6 +29,23 @@ export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
     setLoaded(false)
     setIndex((i) => (i < files.length - 1 ? i + 1 : 0))
   }, [files.length])
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    // Only trigger if horizontal swipe is dominant and long enough
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      dx < 0 ? next() : prev()
+    }
+    touchStartX.current = null
+    touchStartY.current = null
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -93,8 +112,12 @@ export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
         </div>
       </div>
 
-      {/* Media area */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+      {/* Media area â€” touch handlers for swipe navigation on mobile */}
+      <div
+        className="flex-1 relative flex items-center justify-center overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Prev arrow */}
         {files.length > 1 && (
           <button
@@ -161,7 +184,7 @@ export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
                   key={f.id}
                   onClick={() => { setLoaded(false); setIndex(i) }}
                   className={`relative shrink-0 w-12 h-12 rounded overflow-hidden border-2 transition-colors ${
-                    i === index ? "border-sky-500" : "border-transparent opacity-50 hover:opacity-80"
+                    i === index ? "border-[#ff5c2e]" : "border-transparent opacity-50 hover:opacity-80"
                   }`}
                 >
                   {thumb ? (
@@ -219,3 +242,4 @@ function TrashIcon({ className = "" }: { className?: string }) {
     </svg>
   )
 }
+

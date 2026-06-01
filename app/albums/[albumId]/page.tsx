@@ -102,9 +102,9 @@ export default function AlbumPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0e0d0c]">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-[#1f1f1f] px-4 sm:px-6 py-4">
+      <header className="sticky top-0 z-10 bg-[#0e0d0c]/80 backdrop-blur-md border-b border-[#2e2b28] px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-4">
           <button
             onClick={() => router.push("/albums")}
@@ -201,7 +201,7 @@ export default function AlbumPage() {
 
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6">
+    <div className="min-h-screen bg-[#0e0d0c] p-6">
       <div className="max-w-6xl mx-auto">
         <div className="skeleton h-7 w-48 rounded mb-8" />
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 
@@ -87,17 +87,18 @@ export function ShareModal({ folderId, albumName, onClose }: Props) {
             value={email}
             onChange={(e) => { setEmail(e.target.value); setStatus("idle") }}
             onKeyDown={(e) => e.key === "Enter" && handleShare()}
-            className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 text-sm outline-none focus:border-sky-500/60 transition-colors"
+            className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-slate-100 placeholder-slate-600 outline-none focus:border-[#ff5c2e]/60 transition-colors"
+            style={{ fontSize: "16px" }}
           />
           <button
             onClick={handleShare}
             disabled={!email.trim() || status === "loading"}
-            className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shrink-0"
+            className="bg-[#ff5c2e] hover:bg-[#ff7347] disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shrink-0"
           >
             {status === "loading" ? (
               <span className="flex items-center gap-1.5">
                 <span className="w-3.5 h-3.5 border border-white/40 border-t-white rounded-full animate-spin inline-block" />
-                Sharing…
+                Sharingâ€¦
               </span>
             ) : "Share"}
           </button>
@@ -149,3 +150,4 @@ function CheckIcon({ className = "" }: { className?: string }) {
     </svg>
   )
 }
+

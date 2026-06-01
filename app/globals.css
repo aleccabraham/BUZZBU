@@ -12,11 +12,45 @@ html {
   color-scheme: dark;
 }
 
+:root {
+  --bg: #0e0d0c;
+  --surface-1: #161412;
+  --surface-2: #1f1d1a;
+  --surface-3: #2a2724;
+  --border: #2e2b28;
+  --accent: #ff5c2e;
+  --accent-hover: #ff7347;
+  --text: #f0ebe5;
+  --text-muted: #7a736b;
+  --text-faint: #3d3831;
+}
+
 body {
-  background-color: #0a0a0a;
-  color: #f1f5f9;
+  background-color: var(--bg);
+  color: var(--text);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* iOS: prevent auto-zoom on input focus (requires font-size >= 16px) */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Prevent text selection on double-tap in gallery areas */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth momentum scrolling on iOS */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove tap highlight on interactive elements */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Scrollbar styling */

@@ -10,6 +10,7 @@ type Album = {
   name: string
   createdTime?: string
   coverThumbnail?: string | null
+  coverFileId?: string | null
   itemCount: number
 }
 
@@ -76,13 +77,13 @@ export default function AlbumsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0e0d0c]">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-[#1f1f1f] px-4 sm:px-6 py-4">
+      <header className="sticky top-0 z-10 bg-[#0e0d0c]/80 backdrop-blur-md border-b border-[#2e2b28] px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <PhotoIcon className="w-6 h-6 text-sky-400" />
-            <span className="font-semibold text-lg tracking-tight">DrivePhotos</span>
+            <PhotoIcon className="w-6 h-6 text-[#ff5c2e]" />
+            <span className="font-semibold text-lg tracking-tight">BuzzBu</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -96,7 +97,7 @@ export default function AlbumsPage() {
             )}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-sm text-[#7a736b] hover:text-slate-300 transition-colors"
             >
               Sign out
             </button>
@@ -108,9 +109,9 @@ export default function AlbumsPage() {
         {/* Title + actions row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Albums</h1>
+            <h1 className="text-2xl font-bold text-[#f0ebe5]">Albums</h1>
             {session?.user?.name && (
-              <p className="text-slate-500 text-sm mt-0.5">
+              <p className="text-[#7a736b] text-sm mt-0.5">
                 {session.user.email}
               </p>
             )}
@@ -119,7 +120,7 @@ export default function AlbumsPage() {
           {tab === "mine" && (
             <button
               onClick={() => setShowNewAlbumInput(true)}
-              className="flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shrink-0"
+              className="flex items-center gap-2 bg-[#ff5c2e] hover:bg-[#ff7347] text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shrink-0"
             >
               <PlusIcon className="w-4 h-4" />
               New Album
@@ -129,7 +130,7 @@ export default function AlbumsPage() {
 
         {/* New album input */}
         {showNewAlbumInput && (
-          <div className="mb-6 flex items-center gap-3 bg-[#111] border border-[#2a2a2a] rounded-xl p-4">
+          <div className="mb-6 flex items-center gap-3 bg-[#161412] border border-[#2e2b28] rounded-xl p-4">
             <input
               autoFocus
               type="text"
@@ -143,12 +144,13 @@ export default function AlbumsPage() {
                   setNewAlbumName("")
                 }
               }}
-              className="flex-1 bg-transparent outline-none text-slate-100 placeholder-slate-600"
+              className="flex-1 bg-transparent outline-none text-[#f0ebe5] placeholder-slate-600"
+              style={{ fontSize: "16px" }}
             />
             <button
               onClick={createAlbum}
               disabled={!newAlbumName.trim() || creatingAlbum}
-              className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="bg-[#ff5c2e] hover:bg-[#ff7347] disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
             >
               {creatingAlbum ? "Creating…" : "Create"}
             </button>
@@ -157,7 +159,7 @@ export default function AlbumsPage() {
                 setShowNewAlbumInput(false)
                 setNewAlbumName("")
               }}
-              className="text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-[#7a736b] hover:text-slate-300 transition-colors"
             >
               <XIcon className="w-5 h-5" />
             </button>
@@ -165,7 +167,7 @@ export default function AlbumsPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 bg-[#111] border border-[#1f1f1f] rounded-lg p-1 w-fit">
+        <div className="flex gap-1 mb-8 bg-[#161412] border border-[#2e2b28] rounded-lg p-1 w-fit">
           {(["mine", "shared"] as const).map((t) => (
             <button
               key={t}
@@ -173,7 +175,7 @@ export default function AlbumsPage() {
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                 tab === t
                   ? "bg-[#222] text-white shadow"
-                  : "text-slate-500 hover:text-slate-300"
+                  : "text-[#7a736b] hover:text-slate-300"
               }`}
             >
               {t === "mine" ? "My Albums" : "Shared with Me"}
@@ -219,7 +221,7 @@ export default function AlbumsPage() {
 
         {/* Album grid */}
         {!loading && albums.length === 0 && (
-          <div className="text-center py-24 text-slate-600">
+          <div className="text-center py-24 text-[#4a453f]">
             {tab === "mine" ? (
               <>
                 <FolderIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -256,7 +258,7 @@ export default function AlbumsPage() {
 
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6">
+    <div className="min-h-screen bg-[#0e0d0c] p-6">
       <div className="max-w-6xl mx-auto">
         <div className="skeleton h-8 w-32 rounded mb-8" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -308,3 +310,4 @@ function ShareIcon({ className = "" }: { className?: string }) {
     </svg>
   )
 }
+

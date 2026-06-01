@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
             name: folder.name,
             createdTime: folder.createdTime,
             coverThumbnail: cover?.thumbnailLink ?? null,
-            itemCount: 0, // count fetched lazily on open
+            coverFileId: cover?.id ?? null,
+            itemCount: 0,
           }
         })
       )
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
         const [coverRes, countRes] = await Promise.all([
           drive.files.list({
             q: `'${folder.id}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/')`,
-            fields: "files(thumbnailLink)",
+            fields: "files(id, thumbnailLink)",
             pageSize: 1,
             orderBy: "createdTime",
           }),
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
           name: folder.name,
           createdTime: folder.createdTime,
           coverThumbnail: coverRes.data.files?.[0]?.thumbnailLink ?? null,
+          coverFileId: coverRes.data.files?.[0]?.id ?? null,
           itemCount: countRes.data.files?.length ?? 0,
         }
       })

@@ -1,10 +1,16 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Providers } from "@/components/Providers"
 
 export const metadata: Metadata = {
-  title: "DrivePhotos — Your Google Drive Gallery",
+  title: "BuzzBu — Your Google Drive Gallery",
   description: "A personal photo and video gallery backed entirely by your own Google Drive. Original quality, always.",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
