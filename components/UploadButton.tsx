@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useRef, useState } from "react"
 import type { DriveFile } from "@/app/albums/[albumId]/page"
@@ -22,54 +22,60 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
     const files = Array.from(fileList)
     if (!files.length) return
 
-    const items: UploadItem[] = files.map((f) => ({
-      name: f.name,
-      status: "pending",
-    }))
+    const items: UploadItem[] = files.map((f) => ({ name: f.name, status: "pending" }))
     setQueue(items)
     setShowToast(true)
 
     const uploaded: DriveFile[] = []
 
     for (let i = 0; i < files.length; i++) {
-      setQueue((q) =>
-        q.map((item, idx) =>
-          idx === i ? { ...item, status: "uploading" } : item
-        )
-      )
+      setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "uploading" } : item))
 
       try {
-        const formData = new FormData()
-        formData.append("file", files[i])
-        formData.append("folderId", folderId)
-
-        const res = await fetch("/api/drive/files", {
+        // Step 1: get a resumable upload URL from our server
+        // The file is then uploaded directly to Google Drive — bypassing Vercel's body size limit
+        const urlRes = await fetch("/api/drive/upload-url", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: files[i].name,
+            mimeType: files[i].type || "application/octet-stream",
+            folderId,
+          }),
         })
 
-        if (!res.ok) throw new Error("Upload failed")
+        if (!urlRes.ok) throw new Error("Failed to get upload URL")
+        const { uploadUrl } = await urlRes.json()
 
-        const data = await res.json()
-        uploaded.push(data.file)
+        // Step 2: upload file bytes directly to Google Drive
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": files[i].type || "application/octet-stream" },
+          body: files[i],
+        })
 
-        setQueue((q) =>
-          q.map((item, idx) =>
-            idx === i ? { ...item, status: "done" } : item
-          )
-        )
-      } catch {
-        setQueue((q) =>
-          q.map((item, idx) =>
-            idx === i ? { ...item, status: "error" } : item
-          )
-        )
+        if (!uploadRes.ok) throw new Error("Upload to Drive failed")
+
+        const fileData = await uploadRes.json()
+
+        uploaded.push({
+          id: fileData.id,
+          name: fileData.name,
+          mimeType: fileData.mimeType,
+          thumbnailLink: fileData.thumbnailLink,
+          createdTime: fileData.createdTime,
+          size: fileData.size,
+        })
+
+        setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "done" } : item))
+      } catch (err) {
+        console.error("upload error", err)
+        setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "error" } : item))
       }
     }
 
     if (uploaded.length > 0) onUploadComplete(uploaded)
 
-    // Auto-hide toast after 3 seconds when all done
     setTimeout(() => {
       setShowToast(false)
       setQueue([])
@@ -85,7 +91,6 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
         accept="image/*,video/*"
         className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
-        // Reset value so same file can be re-uploaded
         onClick={(e) => { (e.target as HTMLInputElement).value = "" }}
       />
 
@@ -97,17 +102,13 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
         <span>Upload</span>
       </button>
 
-      {/* Upload progress toast */}
       {showToast && queue.length > 0 && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-2xl p-4 min-w-[260px] max-w-xs">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-slate-200">
               Uploading {queue.length} file{queue.length !== 1 ? "s" : ""}
             </span>
-            <button
-              onClick={() => { setShowToast(false); setQueue([]) }}
-              className="text-slate-500 hover:text-slate-300 transition-colors"
-            >
+            <button onClick={() => { setShowToast(false); setQueue([]) }} className="text-slate-500 hover:text-slate-300">
               <XIcon className="w-4 h-4" />
             </button>
           </div>
@@ -116,23 +117,16 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
             {queue.map((item, i) => (
               <div key={i} className="flex items-center gap-2">
                 <StatusIcon status={item.status} />
-                <span className="text-xs text-slate-400 truncate flex-1">
-                  {item.name}
-                </span>
+                <span className="text-xs text-slate-400 truncate flex-1">{item.name}</span>
               </div>
             ))}
           </div>
 
-          {/* Overall progress bar */}
           <div className="mt-3 h-1 bg-[#2a2a2a] rounded-full overflow-hidden">
             <div
               className="h-full bg-[#ff5c2e] transition-all duration-300"
               style={{
-                width: `${
-                  (queue.filter((i) => i.status === "done" || i.status === "error").length /
-                    queue.length) *
-                  100
-                }%`,
+                width: `${(queue.filter((i) => i.status === "done" || i.status === "error").length / queue.length) * 100}%`,
               }}
             />
           </div>
@@ -143,25 +137,17 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
 }
 
 function StatusIcon({ status }: { status: UploadItem["status"] }) {
-  if (status === "uploading") {
-    return (
-      <div className="w-3.5 h-3.5 shrink-0 border border-[#ff5c2e]/30 border-t-[#ff5c2e] rounded-full animate-spin" />
-    )
-  }
-  if (status === "done") {
-    return (
-      <svg className="w-3.5 h-3.5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" />
-      </svg>
-    )
-  }
-  if (status === "error") {
-    return (
-      <svg className="w-3.5 h-3.5 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
-      </svg>
-    )
-  }
+  if (status === "uploading") return <div className="w-3.5 h-3.5 shrink-0 border border-[#ff5c2e]/30 border-t-[#ff5c2e] rounded-full animate-spin" />
+  if (status === "done") return (
+    <svg className="w-3.5 h-3.5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" />
+    </svg>
+  )
+  if (status === "error") return (
+    <svg className="w-3.5 h-3.5 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
   return <div className="w-3.5 h-3.5 shrink-0 rounded-full bg-[#333]" />
 }
 
@@ -180,4 +166,3 @@ function XIcon({ className = "" }: { className?: string }) {
     </svg>
   )
 }
-

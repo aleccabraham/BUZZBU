@@ -1,3 +1,5 @@
+export const maxDuration = 60
+
 import { getServerSession } from "next-auth/next"
 import { NextRequest, NextResponse } from "next/server"
 import { authOptions } from "@/lib/auth"
