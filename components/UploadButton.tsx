@@ -38,6 +38,17 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
       try {
         const mimeType = files[i].type || "application/octet-stream"
 
+        // Verify the token actually has drive scope before attempting upload
+        const tokenInfo = await fetch(
+          `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${session.accessToken}`
+        ).then((r) => r.json())
+
+        if (!tokenInfo.scope?.includes("drive")) {
+          throw new Error(
+            `Token scope is: "${tokenInfo.scope ?? "unknown"}". Please sign out and sign back in to grant Drive access.`
+          )
+        }
+
         // Step 1: initiate a resumable upload session directly with Google Drive
         const initRes = await fetch(
           "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id%2Cname%2CmimeType%2CthumbnailLink%2CcreatedTime%2Csize",
