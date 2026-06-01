@@ -33,49 +33,22 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
       setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "uploading" } : item))
 
       try {
-        // Step 1: get a resumable upload URL from our server
-        const urlRes = await fetch("/api/drive/upload-url", {
+        const formData = new FormData()
+        formData.append("file", files[i])
+        formData.append("folderId", folderId)
+
+        const res = await fetch("/api/drive/files", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: files[i].name,
-            mimeType: files[i].type || "application/octet-stream",
-            fileSize: files[i].size,
-            folderId,
-          }),
+          body: formData,
         })
 
-        if (!urlRes.ok) {
-          const e = await urlRes.json().catch(() => ({}))
-          throw new Error(`URL step failed: ${e.error ?? urlRes.status}`)
-        }
-        const { uploadUrl } = await urlRes.json()
-
-        // Step 2: upload file bytes directly to Google Drive (no Vercel size limit)
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": files[i].type || "application/octet-stream",
-            "Content-Length": String(files[i].size),
-          },
-          body: files[i],
-        })
-
-        if (!uploadRes.ok) {
-          const body = await uploadRes.text()
-          throw new Error(`Drive upload failed (${uploadRes.status}): ${body.slice(0, 200)}`)
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error ?? `Server error ${res.status}`)
         }
 
-        const fileData = await uploadRes.json()
-
-        uploaded.push({
-          id: fileData.id,
-          name: fileData.name,
-          mimeType: fileData.mimeType,
-          thumbnailLink: fileData.thumbnailLink,
-          createdTime: fileData.createdTime,
-          size: fileData.size,
-        })
+        const data = await res.json()
+        uploaded.push(data.file)
 
         setQueue((q) => q.map((item, idx) => idx === i ? { ...item, status: "done" } : item))
       } catch (err) {
