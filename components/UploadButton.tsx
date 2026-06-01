@@ -1,7 +1,6 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useSession } from "next-auth/react"
 import type { DriveFile } from "@/app/albums/[albumId]/page"
 
 type Props = {
@@ -16,7 +15,6 @@ type UploadItem = {
 }
 
 export function UploadButton({ folderId, onUploadComplete }: Props) {
-  const { data: session } = useSession()
   const inputRef = useRef<HTMLInputElement>(null)
   const [queue, setQueue] = useState<UploadItem[]>([])
   const [showToast, setShowToast] = useState(false)
@@ -24,7 +22,6 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
   async function handleFiles(fileList: FileList) {
     const files = Array.from(fileList)
     if (!files.length) return
-    if (!session?.accessToken) { alert("Session expired — please sign in again."); return }
 
     const items: UploadItem[] = files.map((f) => ({ name: f.name, status: "pending" }))
     setQueue(items)
@@ -38,62 +35,59 @@ export function UploadButton({ folderId, onUploadComplete }: Props) {
       try {
         const mimeType = files[i].type || "application/octet-stream"
 
-        // Step 1: initiate resumable upload session
-        const initRes = await fetch(
-          "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id%2Cname%2CmimeType%2CthumbnailLink%2CcreatedTime%2Csize",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${session.accessToken}`,
-              "Content-Type": "application/json",
-              "X-Upload-Content-Type": mimeType,
-              "X-Upload-Content-Length": String(files[i].size),
-            },
-            body: JSON.stringify({ name: files[i].name, parents: [folderId] }),
-          }
-        )
-
-        if (!initRes.ok) {
-          const err = await initRes.text()
-          throw new Error(`Initiation failed (${initRes.status}): ${err.slice(0, 200)}`)
+        // Step 1: server gets the Drive resumable session URL
+        const urlRes = await fetch("/api/drive/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: files[i].name,
+            mimeType,
+            fileSize: files[i].size,
+            folderId,
+          }),
+        })
+        if (!urlRes.ok) {
+          const e = await urlRes.json().catch(() => ({}))
+          throw new Error(e.error ?? `Failed to start upload (${urlRes.status})`)
         }
+        const { uploadUrl } = await urlRes.json()
 
-        const uploadUrl = initRes.headers.get("location")
-        if (!uploadUrl) throw new Error("No upload URL returned by Google")
-
-        // Step 2: upload in 5MB chunks (handles large phone photos reliably)
-        const CHUNK = 5 * 1024 * 1024
+        // Step 2: send file in 3.5MB chunks through our server proxy
+        // Each chunk stays under Vercel's 4.5MB limit; server forwards to Drive.
+        const CHUNK = 3.5 * 1024 * 1024
         const total = files[i].size
         let offset = 0
         let fileData: Record<string, string> | null = null
 
         while (offset < total) {
           const end = Math.min(offset + CHUNK, total)
-          const chunk = files[i].slice(offset, end)
+          const chunkBlob = files[i].slice(offset, end)
 
-          const chunkRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": mimeType,
-              "Content-Range": `bytes ${offset}-${end - 1}/${total}`,
-            },
-            body: chunk,
-          })
+          const form = new FormData()
+          form.append("chunk", chunkBlob)
+          form.append("uploadUrl", uploadUrl)
+          form.append("start", String(offset))
+          form.append("total", String(total))
+          form.append("mimeType", mimeType)
 
-          if (chunkRes.status === 200 || chunkRes.status === 201) {
-            fileData = await chunkRes.json()
+          const res = await fetch("/api/drive/upload-chunk", { method: "POST", body: form })
+          const data = await res.json()
+
+          if (!res.ok) throw new Error(data.error ?? `Chunk failed (${res.status})`)
+
+          if (data.done) {
+            fileData = data.file
             break
-          } else if (chunkRes.status === 308) {
-            // Resume Incomplete — move to next chunk
-            const range = chunkRes.headers.get("range")
-            offset = range ? parseInt(range.split("-")[1]) + 1 : end
+          }
+          // 308 Resume Incomplete — advance offset from server's confirmed range
+          if (data.range) {
+            offset = parseInt(data.range.split("-")[1]) + 1
           } else {
-            const body = await chunkRes.text()
-            throw new Error(`Chunk upload failed (${chunkRes.status}): ${body.slice(0, 200)}`)
+            offset = end
           }
         }
 
-        if (!fileData) throw new Error("Upload completed but no file data returned")
+        if (!fileData) throw new Error("Upload finished but no file data returned")
         uploaded.push({
           id: fileData.id,
           name: fileData.name,
