@@ -37,8 +37,11 @@ export async function POST(request: NextRequest) {
 
   if (!initRes.ok) {
     const err = await initRes.text()
-    console.error("upload-url initiation failed", err)
-    return NextResponse.json({ error: "Failed to initiate upload" }, { status: 500 })
+    console.error("upload-url initiation failed", initRes.status, err)
+    return NextResponse.json(
+      { error: `Google ${initRes.status}: ${err.slice(0, 300)}` },
+      { status: 500 }
+    )
   }
 
   const uploadUrl = initRes.headers.get("location")
