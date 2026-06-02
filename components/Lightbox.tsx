@@ -68,6 +68,29 @@ export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
     return () => { document.body.style.overflow = "" }
   }, [])
 
+  async function shareFile(f: DriveFile) {
+    try {
+      const res = await fetch("/api/drive/make-public", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: f.id }),
+      })
+      const data = await res.json()
+      const url: string = data.publicUrl
+
+      if (navigator.share) {
+        await navigator.share({ url, title: f.name })
+      } else {
+        await navigator.clipboard.writeText(url)
+        alert("Download link copied to clipboard!")
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name !== "AbortError") {
+        alert("Could not share: " + e.message)
+      }
+    }
+  }
+
   if (!file) return null
 
   return (
@@ -81,6 +104,13 @@ export function Lightbox({ files, initialIndex, onClose, onDelete }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            title="Share"
+            onClick={() => shareFile(file)}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <ShareIcon className="w-5 h-5" />
+          </button>
           <a
             href={`/api/drive/media/${file.id}`}
             download={file.name}
@@ -223,6 +253,14 @@ function ChevronRightIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  )
+}
+
+function ShareIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
     </svg>
   )
 }
