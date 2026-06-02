@@ -159,7 +159,16 @@ function FileCell({
       onTouchMove={handleTouchEnd}
     >
       {/* Thumbnail */}
-      {thumbnailSrc ? (
+      {isVideo && !file.thumbnailLink ? (
+        // No Drive thumbnail yet — use video element to show first frame
+        <video
+          src={`/api/drive/media/${file.id}`}
+          preload="metadata"
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      ) : thumbnailSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumbnailSrc}
@@ -169,8 +178,17 @@ function FileCell({
           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
           onError={(e) => {
             const img = e.currentTarget
-            // Videos: never load the video file as <img> — just hide and show placeholder
-            if (isVideo) { img.style.display = "none"; return }
+            if (isVideo) {
+              // Drive thumbnail expired — swap to video element for first frame
+              const vid = document.createElement("video")
+              vid.src = `/api/drive/media/${file.id}`
+              vid.preload = "metadata"
+              vid.muted = true
+              vid.playsInline = true
+              vid.className = img.className
+              img.parentElement?.replaceChild(vid, img)
+              return
+            }
             const proxyUrl = `/api/drive/media/${file.id}`
             const staticThumb = file.thumbnailLink?.replace(/=s\d+$/, "=s400")
             if (isGif && img.src === proxyUrl && staticThumb) {
