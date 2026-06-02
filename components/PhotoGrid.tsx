@@ -126,9 +126,13 @@ function FileCell({
 }) {
   const isImage = file.mimeType.startsWith("image/")
   const isVideo = file.mimeType.startsWith("video/")
+  const isGif = file.mimeType === "image/gif"
   const isMedia = isImage || isVideo
 
-  const thumbnailSrc = file.thumbnailLink
+  // GIFs must use the media proxy — Drive's thumbnailLink is a static PNG
+  const thumbnailSrc = isGif
+    ? `/api/drive/media/${file.id}`
+    : file.thumbnailLink
     ? file.thumbnailLink.replace(/=s\d+$/, "=s400")
     : isMedia
     ? `/api/drive/media/${file.id}`
@@ -174,11 +178,16 @@ function FileCell({
         </div>
       )}
 
-      {/* Video badge */}
+      {/* Video/GIF badge */}
       {isVideo && (
         <div className="absolute bottom-1.5 left-1.5 bg-black/70 rounded px-1 py-0.5 flex items-center gap-1">
           <PlayIcon className="w-3 h-3 text-white" />
           <span className="text-white text-[10px] font-medium">VIDEO</span>
+        </div>
+      )}
+      {isGif && (
+        <div className="absolute bottom-1.5 left-1.5 bg-black/70 rounded px-1 py-0.5">
+          <span className="text-white text-[10px] font-bold">GIF</span>
         </div>
       )}
 
