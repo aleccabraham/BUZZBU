@@ -164,11 +164,18 @@ function FileCell({
         <img
           src={thumbnailSrc}
           alt={file.name}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
           onError={(e) => {
             const img = e.currentTarget
             const proxyUrl = `/api/drive/media/${file.id}`
-            if (img.src !== proxyUrl) img.src = proxyUrl
+            const staticThumb = file.thumbnailLink?.replace(/=s\d+$/, "=s400")
+            if (img.src === proxyUrl && staticThumb) {
+              img.src = staticThumb
+            } else if (img.src !== proxyUrl) {
+              img.src = proxyUrl
+            }
           }}
         />
       ) : (
