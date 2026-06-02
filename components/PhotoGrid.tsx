@@ -169,12 +169,16 @@ function FileCell({
           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
           onError={(e) => {
             const img = e.currentTarget
+            // Videos: never load the video file as <img> — just hide and show placeholder
+            if (isVideo) { img.style.display = "none"; return }
             const proxyUrl = `/api/drive/media/${file.id}`
             const staticThumb = file.thumbnailLink?.replace(/=s\d+$/, "=s400")
-            if (img.src === proxyUrl && staticThumb) {
+            if (isGif && img.src === proxyUrl && staticThumb) {
               img.src = staticThumb
-            } else if (img.src !== proxyUrl) {
+            } else if (!isGif && img.src !== proxyUrl) {
               img.src = proxyUrl
+            } else {
+              img.style.display = "none"
             }
           }}
         />
