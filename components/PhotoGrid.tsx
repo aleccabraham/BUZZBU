@@ -106,7 +106,7 @@ export function PhotoGrid({ files, deletingId, onOpenFile, onDeleteFile }: Props
 
       {!isSelecting && files.length > 0 && (
         <p className="text-center text-xs text-[#4a453f] mt-4">
-          Long press a photo to select multiple
+          Hover a photo and click the circle to select · Long press on mobile
         </p>
       )}
     </div>
@@ -220,18 +220,23 @@ function FileCell({
         </div>
       )}
 
-      {/* Selection checkbox */}
-      {(isSelecting || isSelected) && (
-        <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-          isSelected ? "bg-[#ff5c2e] border-[#ff5c2e]" : "border-white/60 bg-black/30"
-        }`}>
-          {isSelected && (
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          )}
-        </div>
-      )}
+      {/* Selection checkbox — always visible on hover (desktop), shown when selecting */}
+      <div
+        onClick={(e) => { e.stopPropagation(); onLongPress() }}
+        className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer ${
+          isSelected
+            ? "bg-[#ff5c2e] border-[#ff5c2e] opacity-100"
+            : isSelecting
+            ? "border-white/60 bg-black/30 opacity-100"
+            : "border-white/60 bg-black/30 opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {isSelected && (
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        )}
+      </div>
 
       {/* Hover overlay + delete button (only when not selecting) */}
       {!isSelecting && (
